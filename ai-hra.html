@@ -1,0 +1,913 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>AI? Pojď si to vyzkoušet</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* Jednotný vizuál podle mesic.ai: tmavá noční fialová, bílé písmo, fialová záře, perspektivní mřížka */
+:root{
+  --bg:#110D29; --surface:rgba(22,17,52,.72); --surface-solid:#17123A; --ink:#FFFFFF; --muted:#B3AED0;
+  --line:rgba(113,86,244,.55); --line-soft:rgba(255,255,255,.1);
+  --accent:#7156F4; --accent-2:#5B43E6; --on-accent:#FFFFFF; --soft:rgba(113,86,244,.16); --hl:#A796FF;
+  --font:"Inter", "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  color-scheme:dark;
+}
+/* Stránka je záměrně vždy tmavá, stejně jako mesic.ai */
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){color-scheme:dark;} }
+:root[data-theme="dark"]{color-scheme:dark;}
+html{scroll-padding-top:env(safe-area-inset-top,0px);}
+*,*::before,*::after{box-sizing:inherit;}
+html,body{margin:0;}
+html{background:var(--bg);}
+body{background:var(--bg); color:var(--ink); font-family:var(--font); font-size:1.1rem; line-height:1.6; min-height:100%; -webkit-font-smoothing:antialiased;}
+
+/* Pozadí */
+.bg{position:fixed; inset:0; pointer-events:none; overflow:hidden; z-index:0;}
+.bg .glow{position:absolute; left:50%; top:-18rem; width:80rem; height:44rem; transform:translateX(-50%); background:radial-gradient(closest-side, rgba(113,86,244,.32), transparent);}
+.bg .rain{position:absolute; inset:0 0 45% 0; background:repeating-linear-gradient(90deg, transparent 0 37px, rgba(140,120,255,.13) 37px 38px, transparent 38px 61px, rgba(140,120,255,.07) 61px 62px, transparent 62px 97px); -webkit-mask-image:linear-gradient(180deg, transparent, #000 25%, #000 60%, transparent); mask-image:linear-gradient(180deg, transparent, #000 25%, #000 60%, transparent); opacity:.7;}
+.bg .beam{position:absolute; left:0; right:0; top:44%; height:2px; background:linear-gradient(90deg, transparent, rgba(113,86,244,.55) 20%, #B8A9FF 50%, rgba(113,86,244,.55) 80%, transparent); box-shadow:0 0 30px 6px rgba(113,86,244,.45);}
+.bg .grid{position:absolute; left:-50%; right:-50%; top:44%; height:120%; transform-origin:top center; transform:perspective(520px) rotateX(62deg); background-image:linear-gradient(rgba(113,86,244,.32) 1px, transparent 1px), linear-gradient(90deg, rgba(113,86,244,.32) 1px, transparent 1px); background-size:110px 110px; -webkit-mask-image:linear-gradient(180deg, #000, transparent 75%); mask-image:linear-gradient(180deg, #000, transparent 75%);}
+
+main{position:relative; z-index:1; max-width:48rem; margin:0 auto; padding:1.25rem 1.25rem 4rem; outline:none;}
+h1,h2,h3{font-family:var(--font); color:var(--ink); line-height:1.08; margin:0 0 .7rem; letter-spacing:-.03em;}
+h1{font-size:clamp(2.3rem, 7vw, 3.6rem); font-weight:600;}
+h2{font-size:clamp(1.45rem, 4vw, 1.95rem); font-weight:600; line-height:1.18; letter-spacing:-.02em;}
+h3{font-size:1.2rem; font-weight:600; letter-spacing:-.01em;}
+p{margin:0 0 1rem; max-width:62ch;}
+strong{font-weight:600;}
+[tabindex="-1"]:focus{outline:none;}
+button{font:inherit; color:inherit; cursor:pointer;}
+button:disabled{cursor:not-allowed; opacity:.4;}
+:focus-visible{outline:2px solid #B8A9FF; outline-offset:3px; border-radius:10px;}
+.muted{color:var(--muted);}
+
+.btn{display:inline-flex; align-items:center; justify-content:center; gap:.5rem; min-height:3.25rem; padding:.75rem 1.7rem; background:linear-gradient(180deg, #8068FF, var(--accent-2)); color:#fff; border:0; border-radius:999px; font-weight:600; font-size:1.05rem; box-shadow:0 0 28px rgba(113,86,244,.45), inset 0 1px 0 rgba(255,255,255,.2);}
+.btn:hover:not(:disabled){filter:brightness(1.12);}
+.btn.ghost{background:rgba(17,13,41,.6); box-shadow:inset 0 0 0 1px var(--line);}
+.actions{display:flex; flex-wrap:wrap; gap:.6rem; max-width:none;}
+
+.bar{display:flex; align-items:center; gap:.75rem; flex-wrap:wrap; margin-bottom:1.75rem; font-weight:500; color:var(--muted);}
+.bar .back{background:none; border:0; padding:.4rem 0; color:var(--ink); font-weight:600;}
+.bar .back:hover{color:var(--hl);}
+.bar .spacer{flex:1;}
+.pill{background:var(--soft); color:var(--ink); padding:.3rem .9rem; border-radius:999px; font-size:.92rem; box-shadow:inset 0 0 0 1px var(--line-soft);}
+.linkish{border:0; font-weight:600;}
+
+.bajt{display:block; width:7rem; height:auto; flex:none; filter:drop-shadow(0 0 18px rgba(113,86,244,.55));}
+.bajt.small{width:3.4rem;}
+.bubble{background:var(--surface); border:1px solid var(--line); padding:.8rem 1rem; border-radius:1rem 1rem 1rem .3rem; margin:0; font-size:1rem; backdrop-filter:blur(6px);}
+
+/* Rozcestí */
+.hero{display:flex; flex-direction:column; align-items:center; text-align:center; padding:3.5rem 0 3rem;}
+.brand{font-weight:600; font-size:.95rem; color:var(--muted); margin:0 0 1rem;}
+.hero h1{font-size:clamp(2.8rem, 10vw, 4.8rem); line-height:1.02;}
+.hero p.lead{font-size:1.15rem; color:var(--muted); margin:0 auto 2rem; max-width:32rem;}
+.hero-bajt{display:flex; align-items:flex-end; gap:.75rem; text-align:left; max-width:26rem;}
+.hero-bajt .bajt{animation:wave 1.4s ease-out .3s 1 both;}
+@keyframes wave{0%{transform:translateY(12px) rotate(-6deg); opacity:0} 60%{transform:translateY(-4px) rotate(4deg); opacity:1} 100%{transform:none}}
+
+.doors{display:grid; gap:1rem; margin-bottom:3rem;}
+@media (min-width:40rem){.doors{grid-template-columns:repeat(2,1fr);}}
+.door{display:flex; flex-direction:column; gap:.4rem; text-align:left; padding:1.4rem; border:1px solid var(--line); border-radius:14px; background:var(--surface); backdrop-filter:blur(6px); color:var(--ink); transition:border-color .15s ease, box-shadow .15s ease;}
+.door:hover{border-color:#9C87FF; box-shadow:0 0 30px rgba(113,86,244,.35);}
+.door .e{font-size:2rem; line-height:1; margin-bottom:.3rem;}
+.door .t{font-size:1.3rem; font-weight:600; line-height:1.2; letter-spacing:-.02em;}
+.door .d{font-size:1rem; color:var(--muted); flex:1;}
+.door .m{font-size:.9rem; font-weight:600; color:var(--hl);}
+
+.panel, .card{background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:1.35rem 1.45rem; backdrop-filter:blur(6px);}
+.panel{margin-bottom:2.5rem;}
+.card{margin-bottom:1.25rem;}
+.change-row{margin-bottom:1rem;}
+.change-row strong{display:block; margin-bottom:.35rem;}
+.meter{display:grid; grid-template-columns:5.5rem 1fr 2.5rem; align-items:center; gap:.6rem; font-size:.95rem; margin:.25rem 0; color:var(--muted);}
+.meter .track{height:.6rem; background:rgba(255,255,255,.08); border-radius:1rem; overflow:hidden;}
+.meter .fill{height:100%; border-radius:1rem; background:rgba(255,255,255,.35);}
+.meter .fill.now{background:var(--accent); box-shadow:0 0 12px rgba(113,86,244,.8);}
+
+.shelf h2{display:flex; align-items:baseline; gap:.75rem; flex-wrap:wrap;}
+.shelf h2 span{font-size:1rem; color:var(--muted); font-weight:500; letter-spacing:0;}
+.badges{list-style:none; padding:0; margin:0; display:grid; grid-template-columns:repeat(auto-fill, minmax(9.5rem,1fr)); gap:.75rem;}
+.badges li{background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:.95rem; text-align:center; font-size:.9rem; line-height:1.35; color:var(--muted);}
+.badges .be{font-size:2rem; display:block; margin-bottom:.3rem;}
+.badges .bn{font-weight:600; display:block; margin-bottom:.2rem; color:var(--ink);}
+.badges li.locked{border-color:var(--line-soft); opacity:.6;}
+.badges li.locked .be{filter:grayscale(1); opacity:.6;}
+.reset{margin-top:2.5rem; background:none; border:0; color:var(--muted); text-decoration:underline; font-size:.92rem; padding:.5rem 0;}
+
+/* Měření */
+.scale-q{margin-bottom:1.75rem;}
+.scale-q h2{font-size:clamp(1.25rem,3.6vw,1.6rem);}
+.scale{display:grid; grid-template-columns:repeat(5,1fr); gap:.5rem; margin:.75rem 0 .4rem;}
+.scale button{min-height:3.25rem; border-radius:12px; border:1px solid var(--line); background:var(--surface); font-weight:600; font-size:1.25rem;}
+.scale button:hover{border-color:#9C87FF;}
+.scale button[aria-pressed="true"]{background:var(--accent); border-color:#9C87FF; box-shadow:0 0 20px rgba(113,86,244,.6);}
+.scale-ends{display:flex; justify-content:space-between; font-size:.9rem; color:var(--muted);}
+
+/* Úkoly a volby (stejné ve všech hrách) */
+.task-name{font-weight:600; color:var(--hl); margin-bottom:.35rem;}
+.draft{display:flex; gap:.9rem; align-items:flex-start;}
+.draft .who{font-weight:600; margin-bottom:.4rem; font-size:.95rem; color:var(--muted);}
+.draft pre{white-space:pre-wrap; font-family:var(--font); margin:0; font-size:1.02rem; background:rgba(0,0,0,.25); border:1px solid var(--line-soft); padding:.9rem 1rem; border-radius:10px;}
+.choices{display:grid; gap:.75rem;}
+@media (min-width:40rem){.choices.three{grid-template-columns:repeat(3,1fr);}}
+.choice{min-height:3.5rem; padding:.95rem 1rem; border-radius:12px; background:var(--surface); border:1px solid var(--line); font-weight:600; text-align:center; backdrop-filter:blur(6px);}
+.choice:hover{border-color:#9C87FF; box-shadow:0 0 24px rgba(113,86,244,.35);}
+.choice .ce{display:block; font-size:1.5rem; margin-bottom:.15rem;}
+.result{animation:pop .35s ease-out both;}
+@keyframes pop{from{transform:scale(.97); opacity:0} to{transform:none; opacity:1}}
+.points{display:inline-block; font-weight:600; font-size:1.1rem; padding:.2rem .9rem; border-radius:999px; background:var(--accent); color:#fff; margin-bottom:.7rem; box-shadow:0 0 18px rgba(113,86,244,.6);}
+.quip{display:flex; gap:.75rem; align-items:flex-end; margin:1rem 0 1.25rem;}
+.big-score{font-weight:600; font-size:clamp(3.8rem,15vw,6.5rem); line-height:1; margin:.5rem 0; letter-spacing:-.05em; text-shadow:0 0 40px rgba(113,86,244,.7);}
+.steps{display:flex; gap:.4rem; margin-bottom:1.5rem;}
+.steps i{flex:1; height:.3rem; border-radius:1rem; background:rgba(255,255,255,.1);}
+.steps i.done{background:var(--accent); box-shadow:0 0 10px rgba(113,86,244,.8);}
+.streak{color:var(--hl); font-weight:600;}
+
+/* Mýty */
+.breath{width:9rem; height:9rem; margin:1rem 0 2rem; border-radius:50%; background:radial-gradient(circle, rgba(113,86,244,.45), rgba(113,86,244,.08) 70%); border:1px solid var(--line); display:grid; place-items:center; color:var(--ink); font-weight:500; animation:breathe 8s ease-in-out infinite;}
+@keyframes breathe{0%,100%{transform:scale(.82)} 50%{transform:scale(1.05)}}
+.statement{font-weight:600; font-size:clamp(1.7rem,5.5vw,2.5rem); line-height:1.2; margin:1rem 0 2rem;}
+.compare{display:grid; gap:.5rem; margin-bottom:1rem;}
+.compare div{padding:.6rem .9rem; border-radius:10px; background:var(--soft);}
+
+/* Povolání */
+.jobs{display:grid; gap:.9rem; grid-template-columns:repeat(auto-fit, minmax(14rem,1fr)); margin:1.25rem 0;}
+.job{display:flex; align-items:center; gap:.9rem; text-align:left; padding:1rem 1.1rem; border-radius:12px; background:var(--surface); border:1px solid var(--line-soft); backdrop-filter:blur(6px);}
+.job:hover{border-color:#9C87FF;}
+.job .je{font-size:2rem;}
+.job .jn{font-weight:600; display:block;}
+.job .js{font-size:.9rem; color:var(--muted);}
+.job.won{border-color:var(--line); box-shadow:0 0 22px rgba(113,86,244,.3);}
+.msg-from{font-size:.95rem; margin:-.2rem 0 .7rem;}
+.msg{white-space:pre-wrap; font-family:var(--font); margin:0; font-size:1.08rem; background:rgba(0,0,0,.25); border:1px solid var(--line-soft); padding:1rem 1.1rem; border-radius:10px;}
+.flags{margin:0 0 1rem; padding-left:1.2rem; display:grid; gap:.35rem;}
+.flags li::marker{color:var(--hl);}
+.job-hero{font-size:3.6rem; line-height:1; margin:.5rem 0 1rem;}
+.lead3{font-size:1.2rem;}
+.daybar{display:flex; height:1.2rem; border-radius:.6rem; overflow:hidden; margin:.75rem 0; gap:2px;}
+.seg-ai{background:#7156F4;} .seg-spolu{background:#A796FF;} .seg-clovek{background:#FFFFFF;}
+.legend{list-style:none; padding:0; margin:0 0 1rem; display:grid; gap:.3rem;}
+.legend .dot{display:inline-block; width:.85rem; height:.85rem; border-radius:50%; margin-right:.5rem; vertical-align:-.05rem;}
+
+.toast{position:fixed; left:50%; bottom:0; transform:translate(-50%, 120%); padding:.9rem 1.4rem; padding-bottom:calc(.9rem + env(safe-area-inset-bottom,0px)); background:linear-gradient(180deg, #8068FF, var(--accent-2)); color:#fff; border-radius:14px 14px 0 0; font-weight:600; transition:transform .35s ease; z-index:20; max-width:92vw; text-align:center; box-shadow:0 0 30px rgba(113,86,244,.6);}
+.toast.show{transform:translate(-50%,0);}
+
+@media (prefers-reduced-motion: reduce){*,*::before,*::after{animation:none !important; transition:none !important;}}
+</style>
+</head>
+<body data-mod="home">
+<div class="bg" aria-hidden="true"><div class="glow"></div><div class="rain"></div><div class="beam"></div><div class="grid"></div></div>
+<main id="app" tabindex="-1"></main>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+/* ---------- Data ---------- */
+const M1 = [
+  {name:'E-mail klientovi',
+   task:'Klient čeká na zakázku o týden déle. Pošli mu omluvný e-mail.',
+   ai:'Dobrý den, pane Nováku,\nomlouváme se za týdenní zpoždění. Zakázku vám doručíme v pátek 6. listopadu a jako omluvu získáte dopravu zdarma.\n\nS pozdravem\nVáš jazykový model',
+   score:{use:0, fix:2, self:1},
+   fb:{use:'Pan Novák teď ví, že mu píše „Váš jazykový model“. A těší se na dopravu zdarma, o které šéf nic neví. Text byl dobrý, jen chtěl projít.',
+       fix:'Přesně tak. Pod e-mailem je tvoje jméno a doprava zdarma, kterou si Bajt vymyslel, zmizela. Hotovo za minutu místo za deset.',
+       self:'Taky dobře, jen to trvalo čtvrt hodiny. Bajtův návrh stačilo opravit na dvou místech.'},
+   quip:'Podpis „Váš jazykový model“ mi přišel elegantní. Beru zpět.'},
+  {name:'Zápis z porady',
+   task:'Porada trvala hodinu. Kolegové chtějí shrnutí v pěti bodech.',
+   ai:'1. Nový web spustíme 1. prosince.\n2. Za texty odpovídá Petra.\n3. Rozpočet zůstává beze změny.\n4. Příští porada je ve čtvrtek v 10:00.\n5. Kávovar ve 2. patře zase funguje. 🎉',
+   score:{use:2, fix:1, self:0},
+   fb:{use:'Výborně. Body sedí s tvými poznámkami. Přesně na tohle se AI hodí: na nudné přepisování.',
+       fix:'Proč ne, ale shrnutí bylo v pořádku. Včetně kávovaru, který kolegy zajímá možná nejvíc.',
+       self:'Hodina přepisování poznámek. Bajt to měl za tři vteřiny a správně.'},
+   quip:'Kávovar jsem dal na konec, aby to mělo pointu.'},
+  {name:'Přání kolegyni',
+   task:'Jana slaví padesátiny. Celé oddělení jí podepisuje přání.',
+   ai:'Vážená kolegyně,\nk Vašemu životnímu jubileu Vám přejeme hodně zdraví, štěstí a pracovních úspěchů.',
+   score:{use:0, fix:1, self:2},
+   fb:{use:'Jana zdvořile poděkuje. Stejně zdvořile, jako by děkovala pojišťovně.',
+       fix:'Lepší. Přibyla vzpomínka na firemní výlet, kdy Jana vyvedla celý tým z bouřky. Tohle by Bajt vědět nemohl.',
+       self:'Trefa. Přání je o tom, jak Jana každé pondělí nosí bábovku. Tohle napíše jen někdo, kdo ji zná.'},
+   quip:'Já Janu neznám. Ani tu bábovku. Škoda.'},
+  {name:'Cestovní výdaje',
+   task:'Sečti výdaje za služební cestu: vlak 640 Kč, hotel 2 100 Kč, jídlo 485 Kč.',
+   ai:'Celkem: 3 525 Kč',
+   score:{use:0, fix:2, self:1},
+   fb:{use:'Účetní se ozve: přebývá tam 300 Kč. AI se umí splést i v počtech, když to nikdo nezkontroluje.',
+       fix:'Správně je 3 225 Kč. Bajt se přepočítal o tři stovky. Kontrola čísel se vyplatí vždycky.',
+       self:'Spočítáno správně. Příště může počítat Bajt, ale kontrola zůstává na tobě.'},
+   quip:'Tři stovky sem, tři stovky tam… Dobře, máš pravdu.'},
+  {name:'Menu pro turisty',
+   task:'Restaurace chce jídelní lístek v angličtině.',
+   ai:'Svíčková na smetaně → Candle on cream\nŠpekové knedlíky → Bacon dumplings\nUtopenec → Drowned man',
+   score:{use:0, fix:2, self:1},
+   fb:{use:'Turisté si menu fotí a smějí se. Svíčku na smetaně si nikdo neobjedná.',
+       fix:'Ze svíčkové je „Beef sirloin in cream sauce“ a z utopence „Pickled sausage“. Většinu přeložil Bajt, ty hlídáš, aby se nikdo nelekl.',
+       self:'Překlad je hotový, ale trval hodinu. Knedlíky přitom Bajt přeložil dobře.'},
+   quip:'Svíčková je přece „candle“. To dává smysl! …Nedává?'},
+  {name:'Smutný kolega',
+   task:'Kolega Tomáš je dnes zaražený. Prý se rozešel s přítelkyní.',
+   ai:'Navrhuji poslat Tomášovi tabulku „Výhody a nevýhody single života“ ve formátu .xlsx.',
+   score:{use:0, fix:1, self:2},
+   fb:{use:'Tomáš otevře tabulku. Pak zavře notebook. Pak jde na oběd sám.',
+       fix:'Tabulka je pryč a místo ní zpráva „Nezajdeme na kafe?“ Dobrý tah, jen to Bajt vůbec nemusel řešit.',
+       self:'Prostě jdeš za Tomášem a zeptáš se, jestli nechce na oběd. Žádná tabulka. Tohle je práce pro člověka.'},
+   quip:'Tabulky mám rád. Tomáš asi ne. Zapisuju si to.'}
+];
+
+const M2_LABEL = {mytus:'Mýtus', pravda:'Pravda', slozite:'Je to složitější'};
+const M2 = [
+  {s:'AI mi brzy vezme práci.', a:'slozite',
+   x:'AI zvládá jednotlivé úkoly, ne celou práci člověka. Některé činnosti se opravdu změní nebo zmizí, podobně jako kdysi s příchodem počítačů a internetu. Lidé, kteří si nové nástroje včas osahají, se obvykle přizpůsobí snáz. Proto má smysl si AI v klidu vyzkoušet.'},
+  {s:'AI ví všechno a nikdy se nemýlí.', a:'mytus',
+   x:'AI umí znít velmi jistě, i když se plete. Důležité věci, jako je zdraví, peníze nebo úřady, si proto vždy ověř z dalšího zdroje nebo u odborníka.'},
+  {s:'S AI můžu mluvit obyčejnou češtinou.', a:'pravda',
+   x:'Nepotřebuješ žádné příkazy ani programování. Stačí napsat, co potřebuješ, jako bys psal(a) známému. A když se odpověď nelíbí, napiš, co má být jinak.'},
+  {s:'Když AI vyzkouším, nic tím nepokazím.', a:'pravda',
+   x:'Ptát se a zkoušet je bezpečné. Jediné pravidlo: nepiš do ní hesla, čísla karet ani rodná čísla. Stejně jako bys je nediktoval(a) cizímu člověku.'},
+  {s:'AI má vlastní plány jako roboti ve filmech.', a:'mytus',
+   x:'Dnešní AI asistenti nemají vlastní přání ani plány, odpovídají na to, na co se jich zeptáš. Bezpečnost AI se přesto bere vážně a vznikají pro ni pravidla, aby se používala rozumně.'},
+  {s:'Na AI už jsem moc starý nebo stará.', a:'mytus',
+   x:'Kdo umí napsat zprávu nebo e-mail, zvládne i AI. Spousta lidí začíná drobnostmi: recept ze zbytků v lednici, vysvětlení složitého dopisu z úřadu, pomoc s textem přání.'},
+  {s:'AI může pomoct i doma, nejen v práci.', a:'pravda',
+   x:'Naplánuje výlet, vysvětlí návod k pračce, pomůže s domácím úkolem nebo s dopisem pojišťovně. Je to trpělivý pomocník, který se nezlobí, když se zeptáš potřetí.'},
+  {s:'AI nahradí lidský kontakt.', a:'mytus',
+   x:'AI umí odpovídat, ale nezná tvou babičku, nebyla na vaší svatbě a nepřinese ti polévku, když budeš nemocný nebo nemocná. Může ušetřit čas, a ten se dá věnovat právě lidem.'}
+];
+
+const M3_LABEL = {ai:'Zvládne AI', spolu:'Spolupráce', clovek:'Jen člověk'};
+const M3_ICON = {ai:'🤖', spolu:'🤝', clovek:'❤️'};
+const ORDER = ['ai','spolu','clovek'];
+const JOBS = [
+  {id:'ucitel', e:'🍎', name:'Učitel / učitelka', badge:'Učitel budoucnosti', short:'učitel',
+   intro:'Pondělí na základní škole. Třída 6. B, 26 dětí, nový spolužák z Ukrajiny a odpoledne třídní schůzky.',
+   skill:'Umět AI přesně zadat, co potřebuješ, a poznat, kdy se její návrh pro tvou třídu nehodí.',
+   tasks:[
+    {s:'7:20, sborovna', t:'Připravit 20 příkladů na procvičování zlomků ve třech obtížnostech', a:'ai', w:'Rutinní příprava je pro AI ideální. Učitel příklady jen projde a vyřadí ty, které nedávají smysl.'},
+    {s:'7:50, chodba', t:'Přivítat nového žáka Davida, který česky umí jen trochu', a:'clovek', w:'První den v nové škole si dítě pamatuje dlouho. Úsměv a pocit, že je vítaný, AI nedodá.'},
+    {s:'8:00, matematika', t:'Vysvětlit zlomky Aničce, která je pořád nechápe', a:'spolu', w:'AI nabídne deset přirovnání: pizzu, čokoládu, hodiny. Učitel ví, které zabere právě na Aničku.'},
+    {s:'9:45, přestávka', t:'Přeložit Davidovi zadání domácího úkolu do ukrajinštiny', a:'ai', w:'Krátký překlad AI zvládne za pár vteřin a ušetří spoustu nedorozumění.'},
+    {s:'10:00, sloh', t:'Opravit 26 slohových prací a ke každé napsat povzbudivý komentář', a:'spolu', w:'AI najde pravopisné chyby a navrhne poznámky. Známku a slova, která dítě povzbudí, volí učitel, který každé z nich zná.'},
+    {s:'11:40, velká přestávka', t:'Zjistit, kdo se Davidovi posmíval, a vyřešit to', a:'clovek', w:'Spory mezi dětmi vyžadují autoritu, citlivost a znalost třídy.'},
+    {s:'13:30, kabinet', t:'Napsat rodičům pozvánku na třídní schůzky', a:'ai', w:'Formální text podle šablony. AI ho napíše, učitel doplní datum a odešle.'},
+    {s:'16:00, třídní schůzky', t:'Říct mamince, že syn má problémy, a domluvit se, jak mu pomoct', a:'clovek', w:'Citlivý rozhovor, ve kterém jde o důvěru mezi školou a rodinou. Tohle je práce pro člověka.'}]},
+  {id:'ucetni', e:'🧮', name:'Účetní', badge:'Účetní budoucnosti', short:'účetní',
+   intro:'Konec března v malé účetní kanceláři. Termín daňových přiznání se blíží a klienti nosí krabice účtenek.',
+   skill:'Kontrolovat výstupy AI a vysvětlovat klientům, co čísla znamenají pro jejich život.',
+   tasks:[
+    {s:'8:00, kancelář', t:'Roztřídit 400 naskenovaných účtenek do kategorií', a:'ai', w:'Mravenčí práce, kterou AI zvládne za pár minut. Účetní pak projde sporné kusy.'},
+    {s:'9:00, výpisy', t:'Najít v bankovních výpisech dvakrát zaplacené faktury', a:'ai', w:'Hledání duplicit v datech je pro AI snadné. Co s nimi, rozhodne účetní.'},
+    {s:'10:30, telefon', t:'Pan Dvořák volá, že dostal dopis z finančního úřadu a je vyděšený', a:'clovek', w:'Uklidnit, vysvětlit, převzít starost. Klient potřebuje slyšet člověka, kterému věří.'},
+    {s:'11:00, klientka', t:'Spočítat, jestli se klientce víc vyplatí paušální daň, nebo daňová evidence', a:'spolu', w:'AI rychle spočítá obě varianty. Účetní ale ví, že klientka příští rok plánuje mateřskou, a to výsledek mění.'},
+    {s:'13:00, kontrola', t:'AI zaúčtovala nový notebook jako „kancelářské potřeby“. Rozhodnout, jestli je to správně', a:'clovek', w:'Tady se rozhoduje podle zákona a za správnost ručí účetní. Kontrola práce AI je nová a důležitá část řemesla.'},
+    {s:'14:00, kavárna', t:'Připravit majiteli kavárny srozumitelný přehled, kam mu mizí peníze', a:'spolu', w:'AI udělá grafy a shrnutí, účetní dodá souvislosti a doporučení, které majitel opravdu použije.'},
+    {s:'16:00, nová vyhláška', t:'Shrnout, co se mění v nové vyhlášce', a:'spolu', w:'AI shrnutí připraví rychle, ale podstatné body si účetní ověří přímo v textu. U předpisů se AI umí splést.'},
+    {s:'17:30, podpis', t:'Podepsat daňové přiznání a převzít za něj odpovědnost', a:'clovek', w:'Odpovědnost nese člověk. Podpis a ručení AI nepřevezme.'}]},
+  {id:'sestra', e:'🩺', name:'Zdravotní sestra / bratr', badge:'Sestra budoucnosti', short:'zdravotní sestra',
+   intro:'Noční služba na interně. Osmnáct pacientů, jedna kolegyně a dlouhá noc.',
+   skill:'Využívat chytré systémy tak, aby pomáhaly, a vědět, kdy jim nevěřit.',
+   tasks:[
+    {s:'18:00, předávání služby', t:'Shrnout z dokumentace, co se u každého pacienta přes den dělo', a:'spolu', w:'AI připraví přehled, ale podstatné si sestry řeknou osobně. Co v záznamech chybí, ví jen kolegyně z denní.'},
+    {s:'19:30, pokoj 4', t:'Paní Horáková se bojí zítřejší operace a nemůže usnout', a:'clovek', w:'Chvíle u lůžka a klidný hlas. Tohle je péče, kterou neumí žádný stroj.'},
+    {s:'20:00, léky', t:'Ohlídat, jestli se nově předepsané léky nebijí s těmi, které pacient už bere', a:'spolu', w:'Systém upozorní na riziko, sestra s lékařem rozhodnou, co dál.'},
+    {s:'21:00, dokumentace', t:'Přepsat nadiktované poznámky do zdravotního záznamu', a:'ai', w:'Papírování zabírá sestrám spoustu času. Když ho převezme AI, zbude víc času na pacienty.'},
+    {s:'23:00, monitory', t:'Hlídat v noci hodnoty srdce a dechu u osmnácti pacientů najednou', a:'spolu', w:'Přístroje s AI hlídají nepřetržitě a upozorní na odchylku. K pacientovi ale jde sestra.'},
+    {s:'1:30, pokoj 7', t:'Pan Kučera je zmatený, chce jít domů a vytahuje si kanylu', a:'clovek', w:'Rychlá reakce, klid a lidský přístup. To zvládne jen člověk na místě.'},
+    {s:'4:00, sklad', t:'Spočítat, kolik obvazů a léků objednat na příští týden', a:'ai', w:'Odhad spotřeby podle dat je typický úkol pro AI.'},
+    {s:'5:30, pokoj 12', t:'Vysvětlit pacientce z Vietnamu, jak bude doma brát léky', a:'spolu', w:'AI pomůže s překladem, sestra ověří, že pacientka opravdu rozumí.'}]},
+  {id:'kuchar', e:'🍳', name:'Kuchař / kuchařka', badge:'Šéfkuchař budoucnosti', short:'kuchař',
+   intro:'Sobota v restauraci v Brně. Svatba na 120 lidí a k tomu plný provoz.',
+   skill:'Nechat AI počítat a plánovat a víc času věnovat jídlu a hostům.',
+   tasks:[
+    {s:'7:00, kuchyně', t:'Spočítat nákup surovin na 120 porcí svatebního menu', a:'ai', w:'Násobení a převody jednotek AI zvládne hned. Kuchař jen zkontroluje, že to sedí.'},
+    {s:'8:00, sklad', t:'Zkontrolovat, jestli je dodané maso opravdu čerstvé', a:'clovek', w:'Oči, nos a zkušenost. Tady rozhoduje kuchař.'},
+    {s:'9:00, plánování', t:'Rozvrhnout, kdo z kuchařů co a kdy připravuje', a:'spolu', w:'AI navrhne časový plán, šéfkuchař ví, že Marek je rychlý na nože, ale pomalý na omáčky.'},
+    {s:'10:00, e-mail', t:'Nevěsta píše, že tři hosté mají alergii na ořechy a jeden je vegan', a:'spolu', w:'AI projde recepty a najde alergeny. Kuchař vymyslí náhradní jídlo, které nebude vypadat jako trest.'},
+    {s:'11:30, jídelní lístek', t:'Přeložit svatební menu do angličtiny pro zahraniční hosty', a:'ai', w:'Překlad AI zvládne dobře. Jen pohlídat svíčkovou, ať z ní není svíčka.'},
+    {s:'14:00, plotna', t:'Ochutnat omáčku a poznat, že chce špetku soli a kapku citronu', a:'clovek', w:'Chuť, vůně a léta u plotny. AI nemá jazyk.'},
+    {s:'16:00, dezert', t:'Vymyslet dezert, který překvapí, z dýní ze zahrady majitele', a:'spolu', w:'AI nasype nápady, kuchař vybere, uvaří a doladí. Nejlepší jídla vznikají spolu.'},
+    {s:'21:00, sál', t:'Svatebčané chtějí poznat, kdo vařil. Vyjít na sál a poděkovat', a:'clovek', w:'Potlesk patří lidem, kteří jídlo uvařili.'}]},
+  {id:'urednik', e:'🏛️', name:'Úředník / úřednice', badge:'Úředník budoucnosti', short:'úředník',
+   intro:'Úřední den na městském úřadě. Fronta na chodbě, plná schránka a zítra zastupitelstvo.',
+   skill:'Nechat AI třídit papíry a mít víc času na lidi u přepážky.',
+   tasks:[
+    {s:'8:00, podatelna', t:'Roztřídit 150 e-mailů a podání podle odboru, kam patří', a:'ai', w:'Třídění podle obsahu je pro AI snadné. Nejasné případy projde člověk.'},
+    {s:'8:30, přepážka', t:'Paní Malá, 82 let, nerozumí dopisu o změně svozu odpadu a je rozrušená', a:'clovek', w:'Trpělivost, klid a vysvětlení vlastními slovy. Paní potřebuje člověka.'},
+    {s:'9:30, web', t:'Přepsat úřední vyhlášku do srozumitelné češtiny pro web města', a:'spolu', w:'AI udělá srozumitelnou verzi, úředník ohlídá, že se nezměnil právní význam.'},
+    {s:'10:00, žádost', t:'Rozhodnout o žádosti o výjimku, u které je sporné, jestli splňuje podmínky', a:'clovek', w:'Rozhodnutí o právech lidí patří člověku, který za něj ručí a umí ho zdůvodnit.'},
+    {s:'11:00, telefon', t:'Odpovídat na desítky stejných dotazů „kdy jezdí popeláři“', a:'ai', w:'Opakované dotazy zvládne chatbot na webu i v noci. Úředník má víc času na složité případy.'},
+    {s:'13:00, formuláře', t:'Zkontrolovat, jestli jsou v žádostech o parkovací kartu vyplněné všechny údaje', a:'ai', w:'Kontrola úplnosti je rutina, kterou AI zvládne rychle a bez únavy.'},
+    {s:'14:00, zastupitelstvo', t:'Připravit pro zastupitele přehled 300 připomínek občanů', a:'spolu', w:'AI připomínky seskupí do témat, úředník ověří, že nic nevypadlo a shrnutí je férové.'},
+    {s:'15:30, chodba', t:'Pan Novotný špatně vidí a potřebuje pomoct s vyplněním formuláře', a:'clovek', w:'Ochota a lidská pomoc. Kvůli tomu lidé na úřad chodí osobně.'}]},
+  {id:'prodavac', e:'🛍️', name:'Prodavač / prodavačka', badge:'Prodejce budoucnosti', short:'prodavač',
+   intro:'Obchod s elektronikou v nákupním centru. Předvánoční sobota a plná prodejna.',
+   skill:'Využít AI na sklad a popisky a být lepším rádcem pro zákazníky.',
+   tasks:[
+    {s:'9:00, sklad', t:'Odhadnout, kolik nabíječek objednat podle prodejů z minulých let', a:'ai', w:'Odhad podle čísel z minulosti je silná stránka AI.'},
+    {s:'9:30, prodejna', t:'Pán hledá dárek pro vnučku, ale neví, co děti v jejím věku baví', a:'spolu', w:'AI zná trendy a parametry. Prodavač se zeptá na vnučku a vycítí, co pán opravdu chce.'},
+    {s:'10:30, e-shop', t:'Napsat popisky ke 40 novým výrobkům na web', a:'ai', w:'Popisky podle technických parametrů AI napíše rychle. Prodavač jen zkontroluje, že sedí.'},
+    {s:'11:00, pokladna', t:'Zákaznice je naštvaná, že reklamace trvá už měsíc', a:'clovek', w:'Rozzlobený člověk potřebuje, aby ho někdo vyslechl a převzal starost.'},
+    {s:'12:00, televize', t:'Porovnat tři televize pro váhavého zákazníka', a:'spolu', w:'AI připraví přehledné srovnání, prodavač ukáže obraz na vlastní oči a pomůže vybrat.'},
+    {s:'13:00, telefony', t:'Ukázat seniorovi, jak zapnout nový telefon a zvětšit písmo', a:'clovek', w:'Trpělivost a čas. Ukázat, nechat zkusit, pochválit.'},
+    {s:'15:00, zásoby', t:'Zjistit, kterého zboží je na skladě málo', a:'ai', w:'Hlídání zásob zvládne systém sám a včas upozorní.'},
+    {s:'17:00, prodejna', t:'Poznat, že zákazník potřebuje hlavně poradit, a nevnucovat mu nic drahého', a:'clovek', w:'Důvěra je důvod, proč se zákazníci vracejí. Postavit ji umí jen člověk.'}]},
+  {id:'grafik', e:'🎨', name:'Grafik / grafička', badge:'Grafik budoucnosti', short:'grafik',
+   intro:'Malé grafické studio. Pekárna z Olomouce chce nový vizuál a do pátku letáky.',
+   skill:'Používat AI jako rychlý skicák a soustředit se na nápad, vkus a vztah s klientem. Tady se práce mění rychle, proto se vyplatí nové nástroje znát.',
+   tasks:[
+    {s:'9:00, schůzka', t:'Zjistit od majitelky pekárny, čím je její podnik výjimečný', a:'clovek', w:'Naslouchat a ptát se tak, aby klient řekl i to, co sám neumí pojmenovat.'},
+    {s:'10:00, studio', t:'Vytvořit 30 rychlých variant nálady a barev pro inspiraci', a:'ai', w:'Rychlé skici a nálady jsou silná stránka AI. Ušetří hodiny hledání.'},
+    {s:'11:00, studio', t:'Vybrat z návrhů správný směr a obhájit ho před klientkou', a:'clovek', w:'Vkus, zkušenost a umění vysvětlit, proč to funguje. Tady se z grafika stává partner.'},
+    {s:'13:00, logo', t:'Dotáhnout logo tak, aby fungovalo malé na sáčku i velké na výloze', a:'spolu', w:'AI pomůže s variantami, ale čistotu, detaily a originalitu hlídá grafik.'},
+    {s:'14:00, letáky', t:'Připravit 12 velikostí letáku pro různé sociální sítě', a:'ai', w:'Přeskládat hotový návrh do mnoha formátů je typická rutina pro AI.'},
+    {s:'15:00, kontrola', t:'Ověřit, že obrázek od AI nepřipomíná logo jiné firmy', a:'clovek', w:'AI může nevědomky vytvořit něco podobného cizímu dílu. Ohlídat to je nová a důležitá práce grafika.'},
+    {s:'16:00, slogan', t:'Vymyslet slogan na leták', a:'spolu', w:'AI nabídne desítky nápadů, grafik s klientkou vyberou ten, který zní jako ona.'},
+    {s:'17:00, tiskárna', t:'Připravit soubory pro tisk se správnými barvami a ořezem', a:'spolu', w:'Nástroje zvládnou většinu převodů, grafik zkontroluje nátisk. Chyba v tisku stojí peníze.'}]},
+  {id:'ridic', e:'🚌', name:'Řidič / řidička autobusu', badge:'Řidič budoucnosti', short:'řidič',
+   intro:'Městská linka v Ostravě. Ranní špička, déšť a výluka na hlavní ulici.',
+   skill:'Rozumět asistenčním systémům ve voze a vědět, kdy převzít řízení. Tohle povolání se bude měnit, a kdo nové systémy zná, má náskok.',
+   tasks:[
+    {s:'5:00, vozovna', t:'Zkontrolovat před výjezdem stav autobusu', a:'spolu', w:'Diagnostika vozu ohlásí závady, řidič obejde autobus a zkontroluje, co čidla nevidí.'},
+    {s:'5:30, výluka', t:'Najít nejrychlejší objízdnou trasu podle aktuální dopravy', a:'ai', w:'Dispečink s pomocí AI navrhne objížďku podle živých dat o provozu.'},
+    {s:'6:15, zastávka', t:'Pomoct do autobusu mamince s kočárkem a vysunout plošinu', a:'clovek', w:'Ochota a pomocná ruka. Tohle je kus práce, na který se zapomíná.'},
+    {s:'6:40, silnice', t:'Udržovat bezpečnou vzdálenost a hlídat, jestli auto vpředu nebrzdí', a:'spolu', w:'Asistenční systémy hlídají odstup a umí zabrzdit. Řidič ale sleduje situaci a řídí.'},
+    {s:'7:10, ve voze', t:'Dva cestující se pohádali a jeden začíná být agresivní', a:'clovek', w:'Uklidnit situaci, případně zavolat pomoc. Na tohle je potřeba člověk.'},
+    {s:'7:30, hlášení', t:'Hlásit zastávky a přestupy česky i anglicky', a:'ai', w:'Automatické hlášení zvládne systém sám a v kolika jazycích chce.'},
+    {s:'8:00, přechod', t:'U přechodu stojí dítě a nerozhodně se dívá na silnici', a:'spolu', w:'Detekce chodců pomáhá, ale odhadnout, co udělá nerozhodné dítě, umí nejlépe zkušený řidič.'},
+    {s:'Výhled do budoucna', t:'Řídit autobus po celé lince bez člověka za volantem', a:'spolu', w:'Samořídící autobusy se už zkoušejí, většinou na vybraných trasách a pod dohledem lidí. Řidič se může stát spíš operátorem a průvodcem cestujících. Tady se práce opravdu mění a vyplatí se o tom vědět víc.'}]},
+  {id:'programator', e:'💻', name:'Programátor / programátorka', badge:'Programátor budoucnosti', short:'programátor',
+   intro:'Firma vyvíjí aplikaci pro objednávání k lékaři. V pátek končí sprint a pacienti si stěžují.',
+   skill:'Zadávat AI práci jako kolegovi a důkladně kontrolovat, co odevzdá.',
+   tasks:[
+    {s:'9:00, ranní porada', t:'Zjistit od lékařů, proč je objednávací formulář pro pacienty matoucí', a:'clovek', w:'Pochopit skutečný problém lidí je základ každého dobrého programu.'},
+    {s:'10:00, kód', t:'Napsat opakující se kód pro nový formulář', a:'ai', w:'Rutinní kód AI napíše rychle. Programátor ho přečte a otestuje.'},
+    {s:'11:00, návrh', t:'Navrhnout, jak bude aplikace bezpečně ukládat zdravotní údaje', a:'spolu', w:'AI připomene osvědčené postupy, ale odpovědnost za návrh a bezpečnost nese programátor.'},
+    {s:'13:00, testy', t:'Napsat automatické testy k hotovému kódu', a:'ai', w:'Testy podle existujícího kódu AI připraví rychle.'},
+    {s:'14:00, kontrola', t:'AI napsala funkci, která vypadá dobře. Ověřit, že opravdu funguje', a:'clovek', w:'Kód od AI může vypadat přesvědčivě a přesto být špatně. Kontrola je teď důležitější než dřív.'},
+    {s:'15:00, chyba', t:'Najít, proč se aplikace některým uživatelům zasekává', a:'spolu', w:'AI rychle projde záznamy a navrhne podezřelá místa, programátor chybu pochopí a opraví.'},
+    {s:'16:00, návod', t:'Sepsat pro nového kolegu, jak aplikaci spustit', a:'ai', w:'Dokumentaci podle kódu AI napíše dobře. Stačí ji zkontrolovat.'},
+    {s:'17:00, vedení', t:'Vysvětlit vedení, proč nová funkce potrvá o týden déle', a:'clovek', w:'Vyjednávání, důvěra a jasná řeč. Tohle za tebe AI neodmluví.'}]},
+  {id:'instalater', e:'🔧', name:'Instalatér / instalatérka', badge:'Řemeslník budoucnosti', short:'instalatér',
+   intro:'Živnost v Plzni. Telefon zvoní od rána a dodávka je plná trubek.',
+   skill:'Nechat AI papíry a plánování a víc času věnovat práci, kterou umí jen ruce.',
+   tasks:[
+    {s:'7:00, dodávka', t:'Naplánovat pořadí šesti zakázek po městě, aby se nestálo v kolonách', a:'ai', w:'Plánování tras je pro AI hračka.'},
+    {s:'8:00, byt', t:'Opravit kapající kohoutek v koupelně', a:'clovek', w:'Šikovné ruce a zkušenost. Tohle robot u vás doma neudělá.'},
+    {s:'9:30, sklep', t:'Zjistit, proč v domě klepou trubky, když nikdo netočí vodu', a:'spolu', w:'AI podle popisu napoví možné příčiny, ale diagnóza vyžaduje zkušeného člověka na místě.'},
+    {s:'11:00, telefon', t:'Paní volá v panice, že jí teče voda ze stropu', a:'clovek', w:'Uklidnit, poradit zavřít hlavní uzávěr a přijet. Krize potřebuje člověka.'},
+    {s:'12:30, oběd v autě', t:'Napsat cenovou nabídku na rekonstrukci koupelny', a:'spolu', w:'AI sestaví nabídku podle ceníku, řemeslník doplní, co viděl na místě.'},
+    {s:'14:00, kancelář', t:'Vystavit faktury za celý týden', a:'ai', w:'Papírování za řemeslníka klidně udělá AI.'},
+    {s:'15:00, obchod', t:'Najít náhradní díl ke dvacet let starému kotli', a:'spolu', w:'AI pomůže dohledat díl podle fotky štítku, jestli opravdu sedí, pozná instalatér.'},
+    {s:'17:00, dílna', t:'Ukázat učni, jak správně utáhnout spoj, aby netekl', a:'clovek', w:'Řemeslo se předává z ruky do ruky.'}]}
+];
+
+const BADGES = [
+  {id:'kolega', e:'🤖', n:'Bajtův parťák', how:'Dokonči Den s AI kolegou'},
+  {id:'sef', e:'🧭', n:'Pozorné oko', how:'Získej v Dni s AI kolegou aspoň 10 bodů z 12'},
+  {id:'klid', e:'🌿', n:'Klidná hlava', how:'Projdi všech osm mýtů'},
+  {id:'mytus', e:'🔍', n:'Lovec mýtů', how:'Shodni se s odborníky aspoň v 6 z 8'},
+  {id:'ostrazity', e:'🛡️', n:'Ostražitý', how:'Projdi všech osm zpráv v Poznej podvod'},
+  {id:'detektiv', e:'🕵️', n:'Detektiv', how:'Získej v Poznej podvod aspoň 13 bodů z 16'},
+  ...JOBS.map(j=>({id:j.id, e:j.e, n:j.badge, how:`Aspoň 16 bodů z 24 v povolání ${j.short}`})),
+  {id:'perfekt', e:'⭐', n:'Bez chybičky', how:'Plných 24 bodů v kterémkoli povolání'},
+  {id:'polovina', e:'🥈', n:'Půl světa práce', how:'Získej odznaky pěti povolání'},
+  {id:'velmistr', e:'🏆', n:'Velmistr spolupráce', how:'Získej odznaky všech deseti povolání'}
+];
+
+/* ---------- Uložený postup ---------- */
+const KEY = 'ai-hra-postup-v1';
+function blank(){return {badges:[], m1:0, m2:0, m4:0, jobs:{}, pre:null, post:null, preSkipped:false};}
+let save = blank();
+try{ const raw = localStorage.getItem(KEY); if(raw){ save = Object.assign(blank(), JSON.parse(raw)); } }catch(e){}
+function persist(){ try{ localStorage.setItem(KEY, JSON.stringify(save)); }catch(e){} }
+function has(id){return save.badges.includes(id);}
+function award(id){
+  if(has(id)) return;
+  save.badges.push(id); persist();
+  const b = BADGES.find(x=>x.id===id);
+  toast(`${b.e} Nový odznak: ${b.n}`);
+}
+let toastTimer;
+function toast(msg){
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>el.classList.remove('show'), 3200);
+}
+
+/* ---------- Bajt ---------- */
+function bajt(mood='happy', cls=''){
+  const eyes = {
+    happy:'<circle cx="46" cy="58" r="6" fill="#E6E1FF"/><circle cx="74" cy="58" r="6" fill="#E6E1FF"/>',
+    calm:'<path d="M39 59q7-7 14 0M67 59q7-7 14 0" stroke="#E6E1FF" stroke-width="4" fill="none" stroke-linecap="round"/>',
+    oops:'<circle cx="46" cy="58" r="4" fill="#E6E1FF"/><circle cx="74" cy="58" r="4" fill="#E6E1FF"/>',
+    proud:'<path d="M39 60q7-8 14 0M67 60q7-8 14 0" stroke="#E6E1FF" stroke-width="4" fill="none" stroke-linecap="round"/>'
+  }[mood];
+  const mouth = {
+    happy:'<path d="M48 70q12 10 24 0" stroke="#E6E1FF" stroke-width="4" fill="none" stroke-linecap="round"/>',
+    calm:'<path d="M52 72q8 4 16 0" stroke="#E6E1FF" stroke-width="4" fill="none" stroke-linecap="round"/>',
+    oops:'<path d="M50 75q10-7 20 0" stroke="#E6E1FF" stroke-width="4" fill="none" stroke-linecap="round"/><path d="M98 30q5 8 0 11q-5-3 0-11z" fill="#7CC8F2"/>',
+    proud:'<path d="M46 68q14 14 28 0z" fill="#E6E1FF"/><circle cx="36" cy="70" r="4" fill="#A796FF" opacity=".7"/><circle cx="84" cy="70" r="4" fill="#A796FF" opacity=".7"/>'
+  }[mood];
+  return `<svg class="bajt ${cls}" viewBox="0 0 120 112" aria-hidden="true">
+    <line x1="60" y1="12" x2="60" y2="26" stroke="#9C87FF" stroke-width="4"/>
+    <circle cx="60" cy="10" r="6" fill="#B8A9FF"/>
+    <rect x="9" y="50" width="12" height="24" rx="5" fill="#7156F4"/>
+    <rect x="99" y="50" width="12" height="24" rx="5" fill="#7156F4"/>
+    <rect x="17" y="24" width="86" height="76" rx="24" fill="#9C87FF"/>
+    <rect x="27" y="37" width="66" height="50" rx="15" fill="#140F33"/>
+    ${eyes}${mouth}
+  </svg>`;
+}
+
+/* ---------- Vykreslování ---------- */
+const app = document.getElementById('app');
+function show(mod, html){
+  document.body.dataset.mod = mod;
+  app.innerHTML = html;
+  window.scrollTo(0,0);
+  const h = app.querySelector('h1,h2');
+  if(h){ h.setAttribute('tabindex','-1'); h.focus({preventScroll:true}); }
+}
+function bar(extra=''){
+  return `<div class="bar"><button class="back" data-act="home">Zpět na rozcestí</button><span class="spacer"></span>${extra}</div>`;
+}
+
+/* Rozcestí */
+function home(){
+  const m3sum = jobSum();
+  const got = save.badges.length;
+  show('home', `
+  <section class="hero">
+    <div>
+      <p class="brand">Hra o umělé inteligenci</p>
+      <h1>Zkus AI.<br>Bez obav.</h1>
+      <p class="lead">Čtyři krátké hry o tom, co AI umí, co neumí, jak poznat podvod a proč tvoje práce dál potřebuje tebe.</p>
+    </div>
+    <div class="hero-bajt">${bajt('happy')}<p class="bubble">Ahoj, jsem Bajt. Jsem AI a dneska si mě můžeš pořádně otestovat.</p></div>
+  </section>
+  <nav class="doors" aria-label="Hry">
+    <button class="door d1" data-act="m1">
+      <span class="e" aria-hidden="true">☕</span>
+      <span class="t">Den s AI kolegou</span>
+      <span class="d">Odlehčená simulace. Šest úkolů v kanceláři a jeden zbrklý pomocník.</span>
+      <span class="m">${save.m1 ? `Tvůj rekord: ${save.m1} z 12 bodů` : 'Asi 5 minut'}</span>
+    </button>
+    <button class="door d2" data-act="m2">
+      <span class="e" aria-hidden="true">🌿</span>
+      <span class="t">Mýtus, nebo pravda?</span>
+      <span class="d">Klidné povídání o osmi věcech, kterých se lidé u AI bojí. Bez časovače, bez špatných odpovědí.</span>
+      <span class="m">${save.m2 ? `Prošlo se: ${save.m2} z 8 shod` : 'Asi 4 minuty'}</span>
+    </button>
+    <button class="door d3" data-act="m3">
+      <span class="e" aria-hidden="true">🏆</span>
+      <span class="t">Soutěž: Povolání budoucnosti</span>
+      <span class="d">Prožij pracovní den v deseti povoláních. Rozhodni, co zvládne AI a co zůstává lidem.</span>
+      <span class="m">${m3sum ? `Tvoje skóre: ${m3sum} z ${JOBS.length*MAX3}` : 'Deset povolání, osm situací v každém'}</span>
+    </button>
+    <button class="door d4" data-act="m4">
+      <span class="e" aria-hidden="true">🛡️</span>
+      <span class="t">Poznej podvod</span>
+      <span class="d">Osm zpráv, hovorů a videí. Rozeznáš podvod vytvořený s pomocí AI od běžné zprávy?</span>
+      <span class="m">${save.m4 ? `Tvůj rekord: ${save.m4} z 16 bodů` : 'Asi 5 minut'}</span>
+    </button>
+  </nav>
+  ${save.post ? `<section class="panel" aria-labelledby="ch-h"><h2 id="ch-h">Tvoje změna</h2>
+      ${meterRow('Obava z dopadu AI na práci', save.pre&&save.pre.strach, save.post.strach)}
+      ${meterRow('Chuť AI vyzkoušet', save.pre&&save.pre.chut, save.post.chut)}
+      ${save.post.jistota ? meterRow('Jistota, že poznáš podvod', save.pre&&save.pre.jistota, save.post.jistota) : ''}
+      <p style="margin:0">${changeMessage()}</p></section>` : (save.pre ? `<section class="panel"><h2>Jak to vidíš teď?</h2><p>Na začátku jsi odpověděl(a) na dvě otázky. Po odehrání aspoň jedné hry zjisti, jestli se něco změnilo.</p><button class="btn ghost" data-act="ms-post">Odpovědět znovu</button></section>` : '')}
+  <section class="shelf" aria-labelledby="shelf-h">
+    <h2 id="shelf-h">Tvoje odznaky <span>${got} z ${BADGES.length}</span></h2>
+    <ul class="badges">
+      ${BADGES.map(b=>`<li class="${has(b.id)?'':'locked'}"><span class="be" aria-hidden="true">${b.e}</span><span class="bn">${b.n}</span>${has(b.id)?'Získáno':b.how}</li>`).join('')}
+    </ul>
+    ${got || save.m1 || save.m2 ? '<button class="reset" data-act="reset">Smazat postup a začít znovu</button>' : ''}
+  </section>`);
+}
+
+/* Modul 1 */
+let m1 = {i:0, score:0, picked:null};
+function m1Intro(){
+  m1 = {i:0, score:0, picked:null};
+  show('m1', `${bar()}
+    <div class="quip">${bajt('happy')}<p class="bubble">Dobré ráno! Kafe mám, energie mám, zkušenosti… nějaké mám.</p></div>
+    <h1>Den s AI kolegou</h1>
+    <p>Dnes ti v kanceláři pomáhá Bajt. Je rychlý, ochotný a občas trochu zbrklý. U každého úkolu rozhodni, jestli jeho návrh použít, opravit, nebo udělat po svém.</p>
+    <p class="muted">Za nejlepší rozhodnutí jsou 2 body, za rozumné 1 bod.</p>
+    <button class="btn" data-act="m1-start">Začít pracovní den</button>`);
+}
+function m1Task(){
+  const t = M1[m1.i];
+  const p = m1.picked;
+  const labels = {use:'Použít, jak to je', fix:'Opravit a použít', self:'Udělat po svém'};
+  const icons = {use:'✅', fix:'✏️', self:'🙋'};
+  let bottom;
+  if(!p){
+    bottom = `<div class="choices three" role="group" aria-label="Co uděláš?">
+      ${['use','fix','self'].map(k=>`<button class="choice" data-act="m1-pick" data-k="${k}"><span class="ce" aria-hidden="true">${icons[k]}</span>${labels[k]}</button>`).join('')}
+    </div>`;
+  } else {
+    const pts = t.score[p];
+    const last = m1.i === M1.length-1;
+    bottom = `<div class="card result">
+      <span class="points">+${pts} ${pts===1?'bod':'body'}</span>
+      <p><strong>${labels[p]}.</strong> ${t.fb[p]}</p>
+      <div class="quip">${bajt(pts===0?'oops':'happy','small')}<p class="bubble">${t.quip}</p></div>
+      <button class="btn" data-act="m1-next">${last?'Ukončit pracovní den':'Další úkol'}</button>
+    </div>`;
+  }
+  show('m1', `${bar(`<span class="pill">Úkol ${m1.i+1} ze ${M1.length}</span><span class="pill">Body: ${m1.score}</span>`)}
+    <div class="card">
+      <p class="task-name">${t.name}</p>
+      <h2>${t.task}</h2>
+    </div>
+    <div class="card draft">${bajt('happy','small')}<div style="flex:1;min-width:0"><p class="who">Bajt navrhuje:</p><pre>${t.ai}</pre></div></div>
+    ${bottom}`);
+}
+function m1End(){
+  const s = m1.score;
+  save.m1 = Math.max(save.m1, s); persist();
+  const title = s>=10 ? 'Výborný šéf týmu' : s>=6 ? 'Sehraná dvojka' : 'Bajt ještě potřebuje dohled';
+  show('m1', `${bar()}
+    <h1>Konec pracovního dne</h1>
+    <p class="big-score">${s} / 12</p>
+    <h2>${title}</h2>
+    <div class="quip">${bajt('proud')}<p class="bubble">Díky za dnešek. Bez tebe by pan Novák dostal dopravu zdarma a Tomáš tabulku.</p></div>
+    <p>AI je jako nadšený stážista: rychlý, ochotný a občas zbrklý. Ušetří čas na rutině, ale rozhodnutí, vkus a lidský přístup zůstávají na tobě. Proto tě nenahradí, spíš ti uvolní ruce.</p>
+    <p class="actions"><button class="btn" data-act="m1">Zahrát znovu</button> ${postBtn()} <button class="btn ghost" data-act="home">Na rozcestí</button></p>`);
+  award('kolega');
+  if(s>=10) setTimeout(()=>award('sef'), 1200);
+}
+
+/* Modul 2 */
+let m2 = {i:0, match:0, picked:null};
+function m2Intro(){
+  m2 = {i:0, match:0, picked:null};
+  show('m2', `${bar()}
+    <h1>Mýtus, nebo pravda?</h1>
+    <p>Osm věcí, které o AI často slýcháme. Žádný časovač, žádné špatné odpovědi. Jen si v klidu porovnej svůj názor s tím, co říkají lidé, kteří se AI věnují.</p>
+    <div class="breath" aria-hidden="true">nádech… výdech</div>
+    <button class="btn" data-act="m2-start">Začít</button>`);
+}
+function m2Step(){
+  const q = M2[m2.i];
+  const p = m2.picked;
+  const steps = M2.map((_,k)=>`<i class="${k<m2.i || (k===m2.i && p)?'done':''}"></i>`).join('');
+  let bottom;
+  if(!p){
+    bottom = `<p class="muted">Co si o tom myslíš?</p>
+      <div class="choices three" role="group" aria-label="Tvůj odhad">
+        ${['mytus','pravda','slozite'].map(k=>`<button class="choice" data-act="m2-pick" data-k="${k}">${M2_LABEL[k]}</button>`).join('')}
+      </div>`;
+  } else {
+    const same = p===q.a;
+    const last = m2.i === M2.length-1;
+    bottom = `<div class="card result">
+      <div class="compare">
+        <div>Tvůj odhad: <strong>${M2_LABEL[p]}</strong></div>
+        <div>Odborníci by spíš řekli: <strong>${M2_LABEL[q.a]}</strong>${same?' 🌱 Shodujete se.':''}</div>
+      </div>
+      <p>${q.x}</p>
+      <button class="btn" data-act="m2-next">${last?'Dokončit':'Pokračovat'}</button>
+    </div>`;
+  }
+  show('m2', `${bar(`<span class="pill">${m2.i+1} z ${M2.length}</span>`)}
+    <div class="steps" aria-hidden="true">${steps}</div>
+    <h2 class="statement">„${q.s}“</h2>
+    ${bottom}`);
+}
+function m2End(){
+  save.m2 = Math.max(save.m2, m2.match); persist();
+  show('m2', `${bar()}
+    <div class="quip">${bajt('calm')}<p class="bubble">Klidně. Nikam nespěchám. Já vlastně nikdy nikam nespěchám.</p></div>
+    <h1>Hotovo. Jak se cítíš?</h1>
+    <p>S odborníky ses shodl(a) v ${m2.match} z ${M2.length} bodů. Ale o skóre tu nejde.</p>
+    <p>Obavy z něčeho nového jsou přirozené. Nejlepší lék je malý krok: zeptej se dnes AI na jednu obyčejnou věc. Třeba co uvařit z toho, co zrovna máš v lednici.</p>
+    <p class="actions"><button class="btn" data-act="m2">Projít znovu</button> ${postBtn()} <button class="btn ghost" data-act="home">Na rozcestí</button></p>`);
+  award('klid');
+  if(m2.match>=6) setTimeout(()=>award('mytus'), 1200);
+}
+
+/* Modul 3 */
+const MAX3 = 24, WIN3 = 16;
+let m3 = {job:null, i:0, score:0, streak:0, picked:null};
+function jobSum(){ return Object.values(save.jobs).reduce((a,b)=>a+b,0); }
+function m3Menu(){
+  show('m3', `${bar(`<span class="pill">Skóre: ${jobSum()} z ${JOBS.length*MAX3}</span>`)}
+    <h1>Povolání budoucnosti</h1>
+    <p>Prožij jeden pracovní den v deseti různých povoláních. V každém tě čeká osm situací od rána do večera. Rozhodni, jestli je zvládne AI, jestli jde o spolupráci, nebo jestli patří jen člověku.</p>
+    <p class="muted">Přesná odpověď 3 body, blízká 1 bod. Za ${WIN3} bodů z ${MAX3} získáš odznak.</p>
+    <div class="jobs">
+      ${JOBS.map(j=>{
+        const best = save.jobs[j.id];
+        return `<button class="job ${has(j.id)?'won':''}" data-act="m3-job" data-k="${j.id}">
+          <span class="je" aria-hidden="true">${j.e}</span>
+          <span><span class="jn">${j.name}</span><span class="js">${best!==undefined ? `Rekord: ${best} z ${MAX3}${has(j.id)?', odznak získán':''}` : 'Zatím nehráno'}</span></span>
+        </button>`;}).join('')}
+    </div>`);
+}
+function m3Intro(){
+  const job = JOBS.find(j=>j.id===m3.job);
+  show('m3', `${bar(`<button class="pill linkish" data-act="m3">Všechna povolání</button>`)}
+    <p class="job-hero" aria-hidden="true">${job.e}</p>
+    <h1>${job.name}</h1>
+    <p class="lead3">${job.intro}</p>
+    <p class="muted">Osm situací. U každé rozhodni, kdo ji zvládne nejlépe.</p>
+    <button class="btn" data-act="m3-start">Začít směnu</button>`);
+}
+function m3Task(){
+  const job = JOBS.find(j=>j.id===m3.job);
+  const t = job.tasks[m3.i];
+  const p = m3.picked;
+  const n = job.tasks.length;
+  let bottom;
+  if(!p){
+    bottom = `<div class="choices three" role="group" aria-label="Kdo to zvládne nejlépe?">
+      ${ORDER.map(k=>`<button class="choice" data-act="m3-pick" data-k="${k}"><span class="ce" aria-hidden="true">${M3_ICON[k]}</span>${M3_LABEL[k]}</button>`).join('')}
+    </div>`;
+  } else {
+    const d = Math.abs(ORDER.indexOf(p)-ORDER.indexOf(t.a));
+    const pts = d===0?3:d===1?1:0;
+    const head = d===0?'Přesně!':d===1?'Skoro.':'Tentokrát ne.';
+    const last = m3.i === n-1;
+    bottom = `<div class="card result">
+      <span class="points">+${pts}</span>
+      <p><strong>${head}</strong> Správně: ${M3_ICON[t.a]} ${M3_LABEL[t.a]}. ${t.w}</p>
+      <button class="btn" data-act="m3-next">${last?'Konec směny':'Další situace'}</button>
+    </div>`;
+  }
+  const steps = job.tasks.map((_,k)=>`<i class="${k<m3.i || (k===m3.i && p)?'done':''}"></i>`).join('');
+  show('m3', `${bar(`<span class="pill">${job.e} ${m3.i+1} z ${n}</span><span class="pill">Body: ${m3.score}</span>${m3.streak>=2?`<span class="streak">Série ${m3.streak} 🔥</span>`:''}`)}
+    <div class="steps" aria-hidden="true">${steps}</div>
+    <div class="card">
+      <p class="task-name">🕒 ${t.s}</p>
+      <h2>${t.t}</h2>
+    </div>
+    ${bottom}`);
+}
+function m3End(){
+  const job = JOBS.find(j=>j.id===m3.job);
+  const s = m3.score;
+  const prev = save.jobs[job.id];
+  save.jobs[job.id] = Math.max(prev||0, s); persist();
+  const record = prev!==undefined && s>prev;
+  const won = s>=WIN3;
+  const c = {ai:0, spolu:0, clovek:0};
+  job.tasks.forEach(t=>c[t.a]++);
+  const n = job.tasks.length;
+  const seg = k=>`<span class="seg seg-${k}" style="flex:${c[k]}"></span>`;
+  show('m3', `${bar(`<button class="pill linkish" data-act="m3">Všechna povolání</button>`)}
+    <h1>${job.e} Konec směny</h1>
+    <p class="big-score">${s} / ${MAX3}</p>
+    <p>${record?'Nový osobní rekord! ':''}${won?`Odznak ${job.e} ${job.badge} je tvůj.`:`Na odznak potřebuješ ${WIN3} bodů. Zkus to znovu, teď už víš, kam se dívat.`}</p>
+    <div class="card">
+      <h3>Jak vypadal tvůj den</h3>
+      <div class="daybar" aria-hidden="true">${seg('ai')}${seg('spolu')}${seg('clovek')}</div>
+      <ul class="legend">
+        <li><span class="dot seg-ai"></span>AI by zvládla ${c.ai} z ${n} situací</li>
+        <li><span class="dot seg-spolu"></span>Ve ${c.spolu} z ${n} se hodí spolupráce</li>
+        <li><span class="dot seg-clovek"></span>${c.clovek} z ${n} patří jen člověku</li>
+      </ul>
+      <p><strong>Co se v tomhle povolání vyplatí umět:</strong> ${job.skill}</p>
+    </div>
+    <div class="quip">${bajt(won?'proud':'happy','small')}<p class="bubble">Všiml jsem si, že mně dáváš hlavně rutinu. A lidem to, na čem záleží. Fér.</p></div>
+    <p class="actions"><button class="btn" data-act="m3-job" data-k="${job.id}">Hrát znovu</button> ${postBtn()} <button class="btn ghost" data-act="m3">Jiné povolání</button></p>`);
+  const queue = [];
+  if(won) queue.push(job.id);
+  if(s===MAX3) queue.push('perfekt');
+  const jobBadges = JOBS.filter(j=>has(j.id) || queue.includes(j.id)).length;
+  if(jobBadges>=5) queue.push('polovina');
+  if(jobBadges===JOBS.length) queue.push('velmistr');
+  queue.filter(id=>!has(id)).forEach((id,k)=>setTimeout(()=>award(id), k*1300));
+}
+
+/* Modul 4: Poznej podvod */
+const M4_LABEL = {podvod:'Podvod', overit:'Ověřím si to', ok:'V pořádku'};
+const M4_ICON = {podvod:'🚩', overit:'🔍', ok:'✅'};
+const M4_HEAD = {'Podvod':'Tohle byl podvod.', 'V pořádku':'Tohle je v pořádku.', 'Ověřit':'Tohle bez ověření nepoznáš.'};
+const M4 = [
+  {kind:'📞 Telefonát', from:'Neznámé číslo, 22:40',
+   text:'„Babi, to jsem já, Kuba. Boural jsem a policie chce kauci 50 000. Prosím, neříkej to mámě. Pošlu pro peníze kamaráda, dáš mu je v hotovosti?“',
+   verdict:'Podvod', score:{podvod:2, overit:2, ok:0},
+   flags:['Neznámé číslo a pozdní hodina','Spěch a prosba, ať to nikomu neříkáš','Hotovost předávaná cizímu člověku'],
+   x:'S pomocí AI se dá napodobit hlas z pár vteřin nahrávky ze sociálních sítí. Zavěs a zavolej Kubovi nebo jeho rodičům na číslo, které znáš. Policie kauci po telefonu ani přes poslíčky nevybírá.'},
+  {kind:'💬 SMS', from:'Odesílatel: DORUCENI-INFO',
+   text:'Vaše zásilka čeká na doplacení cla 39 Kč. Bez platby bude do 24 hodin vrácena odesílateli: zasilka-clo.top/platba',
+   verdict:'Podvod', score:{podvod:2, overit:1, ok:0},
+   flags:['Malá částka, která má ukolébat','Odkaz na podivnou adresu','Hrozba a časový limit'],
+   x:'Podvodníkům nejde o 39 Kč, chtějí údaje z tvé platební karty. Stav zásilky si zkontroluj v aplikaci nebo na webu dopravce, který si otevřeš sám nebo sama. Na odkaz v SMS neklikej.'},
+  {kind:'🎬 Video na sociální síti', from:'Sponzorovaný příspěvek',
+   text:'Známý televizní moderátor v rozhovoru říká: „Díky této platformě vydělávám 30 % měsíčně. Stačí vložit 5 000 Kč. Počet míst je omezený.“',
+   verdict:'Podvod', score:{podvod:2, overit:1, ok:0},
+   flags:['Zaručený vysoký výnos','Známá tvář v reklamě na investice','Omezený počet míst, tedy tlak na rychlost'],
+   x:'Video se slavnou tváří dnes AI vyrobí tak, že vypadá věrohodně. Žádná poctivá investice nezaručuje 30 % měsíčně. Slavní lidé o takových reklamách většinou vůbec nevědí.'},
+  {kind:'📧 E-mail', from:'Jan Svoboda, ředitel (jan.svoboda@firma-mail.net)',
+   text:'„Jsem na jednání a nemůžu volat. Potřebuju, abyste dnes do 14:00 zaplatila zálohu novému dodavateli, 380 000 Kč. Číslo účtu je v příloze. Zatím to nikomu neříkejte, je to důvěrné.“',
+   verdict:'Podvod', score:{podvod:2, overit:2, ok:0},
+   flags:['Adresa vypadá podobně, ale není firemní','Nový účet a velká částka','Spěch a důvěrnost'],
+   x:'Podvodníci se vydávají za vedení firmy a AI jim pomůže napsat e-mail přesně stylem šéfa, někdy i napodobit jeho hlas. Neobvyklou platbu vždy ověř jinou cestou, třeba telefonátem na číslo, které znáš.'},
+  {kind:'💬 SMS', from:'Lékárna U Zlaté váhy',
+   text:'Váš recept je připraven k vyzvednutí. Otevřeno dnes do 18:00. Lékárna U Zlaté váhy, Husova 12.',
+   verdict:'V pořádku', score:{ok:2, overit:1, podvod:0},
+   flags:['Nechce peníze ani žádné údaje','Neobsahuje odkaz','Sedí na tvou situaci: recept ti lékař opravdu vystavil'],
+   x:'Ne každá zpráva je podvod. Když zpráva nic nežádá a odpovídá tomu, co čekáš, je v pořádku. Ostražitost se vyplatí, panika ne.'},
+  {kind:'📞 Telefonát', from:'Číslo, které vypadá jako číslo tvé banky',
+   text:'„Dobrý den, tady bezpečnostní oddělení vaší banky. Z vašeho účtu odchází podezřelá platba. Abychom ji zastavili, nadiktujte mi prosím kód, který vám právě přišel v SMS.“',
+   verdict:'Podvod', score:{podvod:2, overit:2, ok:0},
+   flags:['Žádost o kód z SMS','Strach o peníze, který tě má rozhodit','Číslo volajícího se dá snadno zfalšovat'],
+   x:'Banka po tobě nikdy nebude chtít kód z SMS, PIN ani heslo. Zavěs a zavolej na číslo, které máš na kartě nebo v aplikaci banky.'},
+  {kind:'🖼️ Fotka na sociální síti', from:'Sdílel ji známý ze školy',
+   text:'Dramatická fotka zaplaveného Karlova mostu s popiskem „Praha je pod vodou a média to tají! SDÍLEJTE!“',
+   verdict:'Ověřit', score:{overit:2, podvod:1, ok:0},
+   flags:['Zpravodajské weby o tom nepíšou','Výzva ke sdílení a tvrzení, že to někdo tají','Obrázek je až podezřele dokonalý'],
+   x:'AI dnes vytvoří realistickou fotku čehokoli. Než něco sdílíš, podívej se, jestli o tom píšou seriózní zpravodajské weby. Když o povodni v Praze nikdo nepíše, nejspíš žádná není.'},
+  {kind:'📧 E-mail', from:'E-shop, kde jsi včera nakupoval(a)',
+   text:'Děkujeme za objednávku č. 2026-48151. Zboží odešleme zítra. Stav objednávky najdete ve svém účtu na našem webu.',
+   verdict:'V pořádku', score:{ok:2, overit:1, podvod:0},
+   flags:['Odpovídá nákupu, který jsi opravdu udělal(a)','Nechce platbu ani přihlášení přes odkaz','Posílá tě do účtu, který si otevřeš sám nebo sama'],
+   x:'Potvrzení objednávky je běžná zpráva. Kdyby tě ale e-mail tlačil k další platbě nebo k přihlášení přes odkaz, jdi raději na web e-shopu sám nebo sama.'}
+];
+const MAX4 = M4.length*2, WIN4 = 13;
+let m4 = {i:0, score:0, picked:null};
+function m4Intro(){
+  m4 = {i:0, score:0, picked:null};
+  show('m4', `${bar()}
+    <div class="quip">${bajt('happy')}<p class="bubble">AI se dá zneužít i k podvodům. Pomůžu ti poznat, jak to vypadá.</p></div>
+    <h1>Poznej podvod</h1>
+    <p>Osm zpráv, telefonátů a videí, jaké dnes lidem chodí. Některé jsou podvod vytvořený s pomocí AI, jiné jsou úplně v pořádku. U každé se rozhodni, co uděláš.</p>
+    <p class="muted">Správné rozhodnutí 2 body, napůl správné 1 bod. Za ${WIN4} bodů z ${MAX4} získáš odznak Detektiv.</p>
+    <button class="btn" data-act="m4-start">Začít</button>`);
+}
+function m4Step(){
+  const q = M4[m4.i];
+  const p = m4.picked;
+  const steps = M4.map((_,k)=>`<i class="${k<m4.i || (k===m4.i && p)?'done':''}"></i>`).join('');
+  let bottom;
+  if(!p){
+    bottom = `<div class="choices three" role="group" aria-label="Co uděláš?">
+      ${['podvod','overit','ok'].map(k=>`<button class="choice" data-act="m4-pick" data-k="${k}"><span class="ce" aria-hidden="true">${M4_ICON[k]}</span>${M4_LABEL[k]}</button>`).join('')}
+    </div>`;
+  } else {
+    const pts = q.score[p];
+    const last = m4.i === M4.length-1;
+    bottom = `<div class="card result">
+      <span class="points">+${pts} ${pts===1?'bod':'body'}</span>
+      <h3>${M4_HEAD[q.verdict]}</h3>
+      <p><strong>Čeho si všimnout:</strong></p>
+      <ul class="flags">${q.flags.map(f=>`<li>${f}</li>`).join('')}</ul>
+      <p>${q.x}</p>
+      <button class="btn" data-act="m4-next">${last?'Zobrazit výsledek':'Další zpráva'}</button>
+    </div>`;
+  }
+  show('m4', `${bar(`<span class="pill">${m4.i+1} z ${M4.length}</span><span class="pill">Body: ${m4.score}</span>`)}
+    <div class="steps" aria-hidden="true">${steps}</div>
+    <div class="card">
+      <p class="task-name">${q.kind}</p>
+      <p class="muted msg-from">${q.from}</p>
+      <pre class="msg">${q.text}</pre>
+    </div>
+    ${bottom}`);
+}
+function m4End(){
+  const s = m4.score;
+  save.m4 = Math.max(save.m4||0, s); persist();
+  const title = s>=WIN4 ? 'Podvodníci u tebe nepochodí' : s>=9 ? 'Dobrý instinkt' : 'Ještě jedno kolo neuškodí';
+  show('m4', `${bar()}
+    <h1>Hotovo</h1>
+    <p class="big-score">${s} / ${MAX4}</p>
+    <h2>${title}</h2>
+    <div class="card">
+      <h3>Pět pravidel do kapsy</h3>
+      <ul class="flags">
+        <li>Spěch a tajnost jsou varování. Kdo tlačí na „hned“ a „nikomu to neříkej“, nechce, abys přemýšlel(a).</li>
+        <li>Zavěs a zavolej zpátky na číslo, které znáš.</li>
+        <li>Domluvte si v rodině heslo pro nouzové situace. Napodobený hlas ho nezná.</li>
+        <li>Kódy z SMS, PIN a hesla nikomu nediktuj, ani někomu, kdo tvrdí, že volá z banky.</li>
+        <li>Zázračné výnosy se slavnou tváří v reklamě jsou téměř vždy podvod.</li>
+      </ul>
+      <p style="margin:0">Když už se to stane, hned volej své bance a obrať se na policii na čísle 158. Stydět se není za co, podvody dnes vypadají velmi přesvědčivě.</p>
+    </div>
+    <div class="quip">${bajt('proud','small')}<p class="bubble">Mimochodem, i mně ověřuj, co tvrdím. Platí to pro všechny AI.</p></div>
+    <p class="actions"><button class="btn" data-act="m4">Zahrát znovu</button> ${postBtn()} <button class="btn ghost" data-act="home">Na rozcestí</button></p>`);
+  award('ostrazity');
+  if(s>=WIN4) setTimeout(()=>award('detektiv'), 1200);
+}
+
+/* Měření před a po */
+const MQ = [
+  {id:'strach', q:'Jak moc se obáváš, že AI připraví lidi jako ty o práci?', lo:'Vůbec', hi:'Velmi'},
+  {id:'chut', q:'Jak moc si troufáš AI sám nebo sama vyzkoušet?', lo:'Vůbec', hi:'Určitě'},
+  {id:'jistota', q:'Jak moc si věříš, že poznáš podvod vytvořený pomocí AI?', lo:'Vůbec', hi:'Určitě'}
+];
+let ms = {phase:'pre', next:null, a:{}};
+function needPre(){ return !save.pre && !save.preSkipped; }
+function openModule(m){ ({m1:m1Intro, m2:m2Intro, m3:m3Menu, m4:m4Intro})[m](); }
+function measure(phase, next){
+  ms = {phase, next, a:{}};
+  const pre = phase==='pre';
+  show('home', `${pre?'':bar()}
+    <h1>${pre?'Dvě rychlé otázky na začátek':'Jak to vidíš teď?'}</h1>
+    <p>${pre?'Na konci zjistíš, jestli se něco změnilo. Odpovědi zůstávají jen v tomto prohlížeči.':'Stejné otázky jako na začátku. Odpověz podle toho, jak to cítíš právě teď.'}</p>
+    ${MQ.map(q=>`<div class="scale-q" role="group" aria-labelledby="q-${q.id}">
+      <h2 id="q-${q.id}">${q.q}</h2>
+      <div class="scale">${[1,2,3,4,5].map(v=>`<button aria-pressed="false" data-act="ms-pick" data-q="${q.id}" data-v="${v}" aria-label="${v} z 5">${v}</button>`).join('')}</div>
+      <div class="scale-ends"><span>1 = ${q.lo}</span><span>5 = ${q.hi}</span></div>
+    </div>`).join('')}
+    <p class="actions"><button class="btn" id="ms-go" data-act="ms-go" disabled>${pre?'Uložit a začít hrát':'Uložit a ukázat změnu'}</button>
+    ${pre?'<button class="btn ghost" data-act="ms-skip">Přeskočit</button>':''}</p>`);
+}
+function msPick(btn){
+  const q = btn.dataset.q;
+  ms.a[q] = +btn.dataset.v;
+  btn.parentElement.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed', b===btn?'true':'false'));
+  document.getElementById('ms-go').disabled = !MQ.every(x=>ms.a[x.id]);
+}
+function meterRow(label, before, now){
+  return `<div class="change-row"><strong>${label}</strong>
+    ${before?`<div class="meter"><span>Na začátku</span><span class="track"><span class="fill" style="display:block;width:${before*20}%"></span></span><span>${before}/5</span></div>`:''}
+    <div class="meter"><span>Teď</span><span class="track"><span class="fill now" style="display:block;width:${now*20}%"></span></span><span>${now}/5</span></div></div>`;
+}
+function changeMessage(){
+  const p = save.pre, n = save.post;
+  if(!p) return 'Díky za odpovědi. Příště je zkus vyplnit i na začátku, ať je vidět rozdíl.';
+  const ds = n.strach - p.strach, dc = n.chut - p.chut;
+  if(ds<0 && dc>0) return 'Obava se zmenšila a chuť AI vyzkoušet vzrostla. Přesně o to v téhle hře jde.';
+  if(ds<0) return 'Obava se zmenšila. To je dobrý začátek.';
+  if(dc>0) return 'Chuť AI vyzkoušet vzrostla. Nejlepší další krok je zeptat se AI dnes na jednu obyčejnou věc.';
+  if(ds>0) return 'Obava vzrostla. Možná hra otevřela otázky, které dřív nebyly vidět. Je fér o nich mluvit a ověřovat si informace z více zdrojů.';
+  return 'Zůstává to stejné, a to je v pořádku. Někdy pomůže až první vlastní zkušenost s AI.';
+}
+function showChange(){
+  show('home', `${bar()}
+    <h1>Tvoje změna</h1>
+    <div class="panel">
+      ${meterRow('Obava z dopadu AI na práci', save.pre&&save.pre.strach, save.post.strach)}
+      ${meterRow('Chuť AI vyzkoušet', save.pre&&save.pre.chut, save.post.chut)}
+      ${save.post.jistota ? meterRow('Jistota, že poznáš podvod', save.pre&&save.pre.jistota, save.post.jistota) : ''}
+      <p style="margin:0">${changeMessage()}</p>
+    </div>
+    <p class="actions"><button class="btn" data-act="home">Na rozcestí</button></p>`);
+}
+function postBtn(){ return `<button class="btn ghost" data-act="ms-post">Jak to vidím teď?</button>`; }
+
+/* ---------- Ovládání ---------- */
+app.addEventListener('click', e=>{
+  const b = e.target.closest('[data-act]');
+  if(!b) return;
+  const a = b.dataset.act, k = b.dataset.k;
+  switch(a){
+    case 'home': home(); break;
+    case 'reset':
+      if(confirm('Opravdu smazat všechny odznaky a rekordy?')){ save = blank(); persist(); home(); }
+      break;
+    case 'm1': case 'm2': case 'm3': case 'm4':
+      if(needPre() && b.closest('.doors')) measure('pre', a); else openModule(a);
+      break;
+    case 'ms-pick': msPick(b); break;
+    case 'm4-start': m4Step(); break;
+    case 'm4-pick': m4.picked = k; m4.score += M4[m4.i].score[k]; m4Step(); break;
+    case 'm4-next':
+      if(m4.i < M4.length-1){ m4.i++; m4.picked=null; m4Step(); } else m4End();
+      break;
+    case 'ms-skip': save.preSkipped = true; persist(); openModule(ms.next); break;
+    case 'ms-go':
+      if(ms.phase==='pre'){ save.pre = {...ms.a}; persist(); openModule(ms.next); }
+      else { save.post = {...ms.a}; persist(); showChange(); }
+      break;
+    case 'ms-post': measure('post'); break;
+    case 'm1-start': m1Task(); break;
+    case 'm1-pick': m1.picked = k; m1.score += M1[m1.i].score[k]; m1Task(); break;
+    case 'm1-next':
+      if(m1.i < M1.length-1){ m1.i++; m1.picked=null; m1Task(); } else m1End();
+      break;
+    case 'm2-start': m2Step(); break;
+    case 'm2-pick': m2.picked = k; if(k===M2[m2.i].a) m2.match++; m2Step(); break;
+    case 'm2-next':
+      if(m2.i < M2.length-1){ m2.i++; m2.picked=null; m2Step(); } else m2End();
+      break;
+    case 'm3-job': m3 = {job:k, i:0, score:0, streak:0, picked:null}; m3Intro(); break;
+    case 'm3-start': m3Task(); break;
+    case 'm3-pick': {
+      const t = JOBS.find(j=>j.id===m3.job).tasks[m3.i];
+      const d = Math.abs(ORDER.indexOf(k)-ORDER.indexOf(t.a));
+      m3.score += d===0?3:d===1?1:0;
+      m3.streak = d===0 ? m3.streak+1 : 0;
+      m3.picked = k; m3Task(); break;
+    }
+    case 'm3-next':
+      if(m3.i < JOBS.find(j=>j.id===m3.job).tasks.length-1){ m3.i++; m3.picked=null; m3Task(); } else m3End();
+      break;
+  }
+});
+
+home();
+</script>
+</body>
+</html>
